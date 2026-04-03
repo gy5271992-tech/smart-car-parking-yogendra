@@ -8,16 +8,8 @@
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^17.4.0",
-<<<<<<< HEAD
     "express": "^4.18.2",
     "mysql2": "^3.20.0",
     "razorpay": "^2.9.6"
   }
 }
-=======
-    "express": "^5.2.1",
-    "mysql2": "^3.20.0",
-    "razorpay": "^2.9.6"
-  }
-}
->>>>>>> abb68fd672d48ae2bb4c9b1cd6bcecbe4163dd2e
