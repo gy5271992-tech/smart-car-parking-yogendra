@@ -1,6 +1,6 @@
 document.addEventListener("DOMContentLoaded", function () {
 
-    const BASE_URL = "http://localhost:5000"; // Apna server URL yahan daalo
+    const BASE_URL = "https://smart-car-parking-yogendra.onrender.com"; // Apna server URL yahan daalo
 
     // ===== ELEMENTS =====
     const areas = {
@@ -81,6 +81,32 @@ document.addEventListener("DOMContentLoaded", function () {
             counters[type].innerText = available;
         });
     }
+   
+
+// 👇 YAHAN ADD KAR
+async function loadSlotsFromServer() {
+    try {
+        const res = await fetch(`${BASE_URL}/slots`);
+        const data = await res.json();
+
+        data.forEach(slotData => {
+            const slot = document.querySelector(
+                `[data-number="${slotData.slot_number}"]`
+            );
+
+            if (slot && slotData.is_booked) {
+                slot.dataset.booked = "true";
+                slot.classList.add("booked");
+                slot.style.border = "2px solid red";
+            }
+        });
+
+        updateAvailable();
+
+    } catch (err) {
+        console.error("Error loading slots:", err);
+    }
+}
 
     // ===== BOOKING LIST UI =====
     function updateBookingUI() {
