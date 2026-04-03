@@ -97,51 +97,62 @@ app.post("/create-order", async (req, res) => {
             return res.status(400).json({ error: "Saari details bharo!" });
         }
 
-        // Check slot already booked nahi hai
+        // ✅ STEP 1: Slot check
         db.query(
             "SELECT is_booked FROM slots WHERE slot_number = ?",
             [slot],
             async (err, rows) => {
-                if (err) return res.status(500).json({ error: err.message });
-
-                if (rows.length > 0 && rows[0].is_booked) {
-                    return res.status(400).json({ error: "Yeh slot already booked hai!" });
+                if (err) {
+                    console.error("DB Error:", err);
+                    return res.status(500).json({ error: err.message });
                 }
 
-                // Razorpay order banao
-                const order = await razorpay.orders.create({
-                    amount:   amount * 100, // paise mein
-                    currency: "INR",
-                    receipt:  "rcpt_" + Date.now(),
-                    notes: { slot, name, vehicle, type, date, time }
-                });
+                if (rows.length > 0 && rows[0].is_booked) {
+                    return res.status(400).json({ error: "Slot already booked!" });
+                }
 
-                // Pending booking insert karo
+                // ✅ STEP 2: Razorpay Order
+                let order;
+                try {
+                    order = await razorpay.orders.create({
+                        amount: amount * 100,
+                        currency: "INR",
+                        receipt: "rcpt_" + Date.now()
+                    });
+                } catch (err) {
+                    console.error("❌ Razorpay Error:", err);
+                    return res.status(500).json({ error: "Razorpay error!" });
+                }
+
+                // ✅ STEP 3: Save booking
                 const ticketId = "TKT-" + Date.now();
 
                 db.query(
                     `INSERT INTO bookings 
-                     (ticket_id, slot_number, user_name, vehicle_number, vehicle_type, booking_date, booking_time, amount, razorpay_order_id, payment_status)
-                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
+                    (ticket_id, slot_number, user_name, vehicle_number, vehicle_type, booking_date, booking_time, amount, razorpay_order_id, payment_status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
                     [ticketId, slot, name, vehicle, type, date, time, amount, order.id],
                     (err2) => {
-                        if (err2) return res.status(500).json({ error: err2.message });
+                        if (err2) {
+                            console.error("DB Insert Error:", err2);
+                            return res.status(500).json({ error: err2.message });
+                        }
 
-                        // TEMP TEST
-res.json({
-   order_id: "test123",
-   amount: amount,
-   currency: "INR",
-   ticket_id: "TEST123",
-   key_id: "test"
-});
+                        // ✅ FINAL RESPONSE
+                        res.json({
+                            order_id: order.id,
+                            amount: order.amount,
+                            currency: order.currency,
+                            ticket_id: ticketId,
+                            key_id: process.env.RAZORPAY_KEY_ID
+                        });
                     }
                 );
             }
         );
 
     } catch (err) {
-        console.error(err);
+        console.error("❌ Create Order Error:", err);
         res.status(500).json({ error: "Order create nahi hua!" });
     }
 });
@@ -231,3 +242,7 @@ app.get("/verify/:ticketId", (req, res) => {
 // =====================
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
+
+process.on("unhandledRejection", (err) => {
+    console.error("🔥 Unhandled Rejection:", err);
+});
