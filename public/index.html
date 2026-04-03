@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Parking Premium</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- ================= NAVBAR ================= -->
+    <header class="navbar">
+        <div class="logo">
+            <span class="logo-icon">🚗</span>
+            <span class="logo-text">Smart<span class="accent">Park</span></span>
+        </div>
+        <nav class="nav-links">
+            <a href="#" onclick="toggleBookings(event)">
+                <i class="fas fa-calendar-check"></i> Bookings
+                <span id="bookingCount" class="badge">0</span>
+            </a>
+            <a href="#" onclick="openContact(event)">
+                <i class="fas fa-phone"></i> Contact
+            </a>
+        </nav>
+        <div class="profile"><i class="fas fa-user-circle"></i></div>
+    </header>
+
+    <!-- ================= CONTACT POPUP ================= -->
+    <div id="contactPopup" class="overlay-popup" onclick="closeContactOnBg(event)">
+        <div class="contact-modal">
+            <button class="modal-close" onclick="closeContact()">✕</button>
+            <h3><i class="fas fa-headset"></i> Management Contact</h3>
+            <div class="contact-item">
+                <i class="fas fa-user-tie"></i><span>Parking Manager</span>
+            </div>
+            <div class="contact-item">
+                <i class="fas fa-phone"></i><a href="tel:8306749067">+91 8306749067</a>
+            </div>
+            <div class="contact-item">
+                <i class="fas fa-phone"></i><a href="tel:9352986239">+91 9352986239</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= BOOKINGS POPUP ================= -->
+    <div id="bookingPopup" class="overlay-popup" onclick="closeBokingOnBg(event)">
+        <div class="booking-box">
+            <button class="modal-close" onclick="toggleBookings(event)">✕</button>
+            <h3>🎫 My Tickets</h3>
+            <div id="bookingList"><p class="empty-msg">No bookings yet</p></div>
+        </div>
+    </div>
+
+    <!-- ================= HERO ================= -->
+    <section class="hero">
+        <div class="hero-content">
+            <div class="cctv">
+                <span>📹</span><span>CCTV Live Monitoring</span>
+                <div class="live-dot"></div>
+            </div>
+            <h1>Smart Parking <span class="accent">Premium</span></h1>
+            <p class="hero-sub">Book your slot instantly — Bike, Car, or Truck</p>
+        </div>
+        <div class="gate-container">
+            <div class="gate-bar" id="gate"></div>
+            <div class="gate-pole left"></div>
+            <div class="gate-pole right"></div>
+        </div>
+    </section>
+
+    <!-- ================= PARKING SECTIONS ================= -->
+    <main class="parking-main">
+
+        <div class="parking-section">
+            <div class="section-header">
+                <span class="section-icon">🏍</span>
+                <h2>Bike Parking</h2>
+                <div class="availability-badge"><span id="bikeCount">0</span> Available</div>
+            </div>
+            <div id="bikeArea" class="slot-container"></div>
+        </div>
+
+        <div class="parking-section">
+            <div class="section-header">
+                <span class="section-icon">🚗</span>
+                <h2>Car Parking</h2>
+                <div class="availability-badge"><span id="carCount">0</span> Available</div>
+            </div>
+            <div id="carArea" class="slot-container"></div>
+        </div>
+
+        <div class="parking-section">
+            <div class="section-header">
+                <span class="section-icon">🚚</span>
+                <h2>Truck Parking</h2>
+                <div class="availability-badge"><span id="truckCount">0</span> Available</div>
+            </div>
+            <div id="truckArea" class="slot-container"></div>
+        </div>
+
+    </main>
+
+    <!-- ================= BOOKING DETAILS POPUP ================= -->
+    <div id="billPopup" class="overlay-popup">
+        <div class="bill-box">
+            <button class="modal-close" onclick="closePopup()">✕</button>
+            <h3>📋 Booking Details</h3>
+            <div class="bill-info">
+                <div class="info-row">
+                    <span>Slot</span><strong id="billSlot">—</strong>
+                </div>
+                <div class="info-row">
+                    <span>Amount</span><strong id="amountDisplay" class="accent">—</strong>
+                </div>
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-user"></i> Your Name</label>
+                <input type="text" id="userName" placeholder="Apna naam daalen">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-car"></i> Vehicle Number</label>
+                <input type="text" id="vehicleNumber" placeholder="e.g. MP09AB1234">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-calendar"></i> Date</label>
+                <input type="date" id="bookingDate">
+            </div>
+            <div class="form-group">
+                <label><i class="fas fa-clock"></i> Time</label>
+                <input type="time" id="bookingTime">
+            </div>
+            <button class="pay-btn" onclick="payNow()">
+                <i class="fas fa-credit-card"></i> Pay with Razorpay
+            </button>
+            <button class="cancel-btn" onclick="closePopup()">Cancel</button>
+        </div>
+    </div>
+
+    <!-- ================= TICKET SUCCESS POPUP ================= -->
+    <div id="ticketPopup" class="overlay-popup">
+        <div class="ticket-success-box">
+            <div class="success-icon">✅</div>
+            <h3>Booking Confirmed!</h3>
+            <p id="ticketIdDisplay"></p>
+            <div id="ticketQR" class="ticket-qr-wrap"></div>
+            <p class="scan-note">Entry/Exit gate pe yeh QR scan karein</p>
+            <button class="pay-btn" onclick="closeTicket()">Done</button>
+        </div>
+    </div>
+
+    <!-- ================= SCRIPTS ================= -->
+    <!-- QR Code Generator -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+    <!-- ✅ Razorpay SDK -->
+    <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+
+    <!-- Your JS -->
+    <script src="script.js"></script>
+
+</body>
+</html>
