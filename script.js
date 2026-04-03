@@ -350,4 +350,6 @@ async function loadSlotsFromServer() {
     createSlots("bike");
     createSlots("car");
     createSlots("truck");
+
+    loadSlotsFromServer();
 });
