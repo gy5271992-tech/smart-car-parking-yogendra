@@ -11,9 +11,8 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, "public")));
 
-app.get("/", (req, res) => {
-  res.send("🚀 Parking Backend Running Successfully");
-});
+
+
 // =====================
 // DATABASE CONNECTION
 // =====================
@@ -23,7 +22,7 @@ const db = mysql.createConnection({
     password: process.env.DB_PASS,
     database: process.env.DB_NAME,
     port:   process.env.DB_PORT,
-  ssl:{
+    ssl:{
         rejectUnauthorized: false
     }
 });
@@ -128,13 +127,14 @@ app.post("/create-order", async (req, res) => {
                     (err2) => {
                         if (err2) return res.status(500).json({ error: err2.message });
 
-                        res.json({
-                            order_id:   order.id,
-                            amount:     order.amount,
-                            currency:   order.currency,
-                            ticket_id:  ticketId,
-                            key_id:     process.env.RAZORPAY_KEY_ID
-                        });
+                        // TEMP TEST
+res.json({
+   order_id: "test123",
+   amount: amount,
+   currency: "INR",
+   ticket_id: "TEST123",
+   key_id: "test"
+});
                     }
                 );
             }
