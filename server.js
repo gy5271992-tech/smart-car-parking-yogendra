@@ -15,15 +15,18 @@ app.use(express.static(path.join(__dirname, "public")));
 // DATABASE CONNECTION
 // =====================
 const db = mysql.createConnection({
-    host:     process.env.DB_HOST,
-    port:     process.env.DB_PORT,
-    user:     process.env.DB_USER,
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USER,
     password: process.env.DB_PASS,
     database: process.env.DB_NAME
 });
 
 db.connect(err => {
-    if (err) { console.error("❌ DB Error:", err); return; }
+    if (err) {
+        console.error("❌ DB Error:", err);
+        return;
+    }
     console.log("✅ MySQL Connected!");
     createTables();
 });
@@ -72,7 +75,7 @@ const razorpay = new Razorpay({
 // GET SLOTS
 // =====================
 app.get("/slots", (req, res) => {
-    db.query("SELECT slot_number, type, is_booked FROM slots", (err, results) => {
+    db.query("SELECT slot_number, type, is_booked FROM slots ORDER BY id", (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
         res.json(results);
     });
@@ -110,8 +113,8 @@ app.post("/create-order", async (req, res) => {
 
                 db.query(
                     `INSERT INTO bookings 
-                    (ticket_id, slot_number, user_name, vehicle_number, vehicle_type, amount, razorpay_order_id)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)`,
+                    (ticket_id, slot_number, user_name, vehicle_number, vehicle_type, amount, razorpay_order_id, payment_status)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'PENDING')`,
                     [ticketId, slot, name, vehicle, type, amount, order.id],
                     (err2) => {
                         if (err2) return res.status(500).json({ error: err2.message });
@@ -129,6 +132,7 @@ app.post("/create-order", async (req, res) => {
         );
 
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: "Order failed!" });
     }
 });
@@ -141,17 +145,17 @@ app.post("/verify-payment", (req, res) => {
 
     const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET);
     hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
-    const generated = hmac.digest("hex");
+    const generatedSignature = hmac.digest("hex");
 
     console.log("Signature:", razorpay_signature);
-    console.log("Generated:", generated);
+    console.log("Generated:", generatedSignature);
 
-    // TEMP: skip verification (demo)
-    // if (generated !== razorpay_signature) {
+    // ✅ DEMO MODE: verification skip (IMPORTANT)
+    // if (generatedSignature !== razorpay_signature) {
     //     return res.status(400).json({ success: false });
     // }
 
-    // 🔥 slot DB se nikaalo (IMPORTANT)
+    // 🔥 DB से slot निकालो (correct way)
     db.query(
         "SELECT slot_number FROM bookings WHERE razorpay_order_id=?",
         [razorpay_order_id],
@@ -162,14 +166,20 @@ app.post("/verify-payment", (req, res) => {
 
             const slot = rows[0].slot_number;
 
+            // booking update
             db.query(
                 "UPDATE bookings SET payment_status='PAID', razorpay_payment_id=? WHERE razorpay_order_id=?",
                 [razorpay_payment_id, razorpay_order_id],
-                () => {
+                (err2) => {
+                    if (err2) return res.status(500).json({ error: err2.message });
+
+                    // slot booked
                     db.query(
                         "UPDATE slots SET is_booked=TRUE WHERE slot_number=?",
                         [slot],
-                        () => {
+                        (err3) => {
+                            if (err3) return res.status(500).json({ error: err3.message });
+
                             res.json({ success: true });
                         }
                     );
@@ -180,7 +190,9 @@ app.post("/verify-payment", (req, res) => {
 });
 
 // =====================
-// SERVER
+// SERVER START
 // =====================
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log("🚀 Server running on port " + PORT));
+app.listen(PORT, () => {
+    console.log("🚀 Server running on port " + PORT);
+});
