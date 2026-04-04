@@ -184,7 +184,12 @@ document.addEventListener("DOMContentLoaded", function () {
                     );
                 },
 
-                prefill: { name: name },
+                prefill: {
+                    name: name,
+                    contact: "9123456789",
+                    email: "test@gmail.com"
+                },
+
                 theme: { color: "#00d4ff" }
             };
 
@@ -209,7 +214,8 @@ document.addEventListener("DOMContentLoaded", function () {
                 body: JSON.stringify({
                     razorpay_order_id: orderId,
                     razorpay_payment_id: paymentId,
-                    razorpay_signature: signature
+                    razorpay_signature: signature,
+                    slot: slot   // ✅ FIXED
                 })
             });
 
