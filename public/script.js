@@ -165,39 +165,88 @@ document.addEventListener("DOMContentLoaded", function () {
             }
 
             const options = {
-                key:      data.key_id,
-                amount:   data.amount,
-                currency: data.currency,
-                name:     "Smart Parking",
-                description: `Slot: ${slot}`,
-                order_id: data.order_id,
+    key: data.key_id,
+    amount: data.amount,
+    currency: data.currency,
+    name: "Smart Parking",
+    description: `Slot: ${slot}`,
+    order_id: data.order_id,
 
-                handler: async function (response) {
-                    await verifyPayment(
-                        response.razorpay_order_id,
-                        response.razorpay_payment_id,
-                        response.razorpay_signature,
-                        data.ticket_id,
-                        slot
-                    );
+    handler: async function (response) {
+
+        console.log("✅ PAYMENT SUCCESS:", response);
+
+        try {
+            const verifyRes = await fetch(`${BASE_URL}/verify-payment`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
                 },
+                body: JSON.stringify({
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                    ticket_id: data.ticket_id,
+                    slot: slot
+                })
+            });
 
-                prefill: { name: name },
-                theme: { color: "#00d4ff" }
-            };
+            const verifyData = await verifyRes.json();
 
-            const rzp = new window.Razorpay(options);
-            rzp.open();
+            console.log("VERIFY RESPONSE:", verifyData);
 
-            billPopup.style.display = "none";
+            if (verifyData.success) {
+
+                // ✅ SLOT BOOK UI
+                if (selectedSlot) {
+                    selectedSlot.dataset.booked = "true";
+                    selectedSlot.classList.add("booked");
+                    selectedSlot.style.border = "2px solid #ff4455";
+                }
+
+                bookings.push({
+                    ticketId: data.ticket_id,
+                    slot: slot,
+                    vehicle: vehicleInput.value.trim(),
+                    name: userNameInput.value.trim(),
+                    amount: Number(selectedSlot.dataset.price)
+                });
+
+                updateBookingUI();
+                updateAvailable();
+
+                gate.classList.add("open");
+                setTimeout(() => gate.classList.remove("open"), 2500);
+
+                showTicketPopup(data.ticket_id);
+                resetForm();
+
+                alert("✅ Payment Successful & Slot Booked!");
+
+            } else {
+                alert("❌ Payment verification failed");
+            }
 
         } catch (err) {
             console.error(err);
-            alert("❌ Server error!");
-            payBtn.innerText = "💳 Proceed to Pay";
-            payBtn.disabled  = false;
+            alert("❌ Verification error!");
         }
-    };
+    },
+
+    modal: {
+        ondismiss: function () {
+            alert("❌ Payment cancelled");
+        }
+    },
+
+    prefill: {
+        name: name
+    },
+
+    theme: {
+        color: "#00d4ff"
+    }
+};
 
     async function verifyPayment(orderId, paymentId, signature, ticketId, slot) {
         try {
