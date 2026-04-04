@@ -137,28 +137,43 @@ app.post("/create-order", async (req, res) => {
 // VERIFY PAYMENT
 // =====================
 app.post("/verify-payment", (req, res) => {
-    const { razorpay_order_id, razorpay_payment_id, razorpay_signature, slot } = req.body;
+    const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
 
     const hmac = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET);
     hmac.update(razorpay_order_id + "|" + razorpay_payment_id);
     const generated = hmac.digest("hex");
 
-  //  if (generated !== razorpay_signature) {
-   //     return res.status(400).json({ success: false });
-    //}
+    console.log("Signature:", razorpay_signature);
+    console.log("Generated:", generated);
 
-    // TEMP: skip verification (for demo)
-console.log("Signature:", razorpay_signature);
-console.log("Generated:", generatedSignature);
+    // TEMP: skip verification (demo)
+    // if (generated !== razorpay_signature) {
+    //     return res.status(400).json({ success: false });
+    // }
 
+    // 🔥 slot DB se nikaalo (IMPORTANT)
     db.query(
-        "UPDATE bookings SET payment_status='PAID', razorpay_payment_id=? WHERE razorpay_order_id=?",
-        [razorpay_payment_id, razorpay_order_id],
-        () => {
+        "SELECT slot_number FROM bookings WHERE razorpay_order_id=?",
+        [razorpay_order_id],
+        (err, rows) => {
+            if (err || rows.length === 0) {
+                return res.status(500).json({ error: "Booking not found" });
+            }
+
+            const slot = rows[0].slot_number;
+
             db.query(
-                "UPDATE slots SET is_booked=TRUE WHERE slot_number=?",
-                [slot],
-                () => res.json({ success: true })
+                "UPDATE bookings SET payment_status='PAID', razorpay_payment_id=? WHERE razorpay_order_id=?",
+                [razorpay_payment_id, razorpay_order_id],
+                () => {
+                    db.query(
+                        "UPDATE slots SET is_booked=TRUE WHERE slot_number=?",
+                        [slot],
+                        () => {
+                            res.json({ success: true });
+                        }
+                    );
+                }
             );
         }
     );
