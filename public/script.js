@@ -3,30 +3,30 @@ document.addEventListener("DOMContentLoaded", function () {
     const BASE_URL = "https://smart-car-parking-yogendra.onrender.com";
 
     const areas = {
-        bike: document.getElementById("bikeArea"),
-        car: document.getElementById("carArea"),
+        bike:  document.getElementById("bikeArea"),
+        car:   document.getElementById("carArea"),
         truck: document.getElementById("truckArea")
     };
 
     const counters = {
-        bike: document.getElementById("bikeCount"),
-        car: document.getElementById("carCount"),
+        bike:  document.getElementById("bikeCount"),
+        car:   document.getElementById("carCount"),
         truck: document.getElementById("truckCount")
     };
 
-    const billPopup = document.getElementById("billPopup");
-    const billSlot = document.getElementById("billSlot");
+    const billPopup     = document.getElementById("billPopup");
+    const billSlot      = document.getElementById("billSlot");
     const amountDisplay = document.getElementById("amountDisplay");
-    const gate = document.getElementById("gate");
+    const gate          = document.getElementById("gate");
     const userNameInput = document.getElementById("userName");
-    const vehicleInput = document.getElementById("vehicleNumber");
+    const vehicleInput  = document.getElementById("vehicleNumber");
 
     let selectedSlot = null;
-    let bookings = [];
+    let bookings     = [];
 
     const config = {
-        bike: { count: 40, price: 20, icon: "🏍", color: "#00e5ff" },
-        car: { count: 30, price: 50, icon: "🚗", color: "#00ccff" },
+        bike:  { count: 40, price: 20,  icon: "🏍", color: "#00e5ff" },
+        car:   { count: 30, price: 50,  icon: "🚗", color: "#00ccff" },
         truck: { count: 10, price: 100, icon: "🚚", color: "#ff9900" }
     };
 
@@ -36,10 +36,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
         for (let i = 1; i <= count; i++) {
             const slot = document.createElement("div");
-            slot.className = "slot";
+            slot.className      = "slot";
             slot.dataset.booked = "false";
-            slot.dataset.type = type;
-            slot.dataset.price = price;
+            slot.dataset.type   = type;
+            slot.dataset.price  = price;
             slot.dataset.number = `${type.toUpperCase()}-${i}`;
 
             slot.innerHTML = `
@@ -55,7 +55,7 @@ document.addEventListener("DOMContentLoaded", function () {
                 slot.classList.add("selected");
                 selectedSlot = slot;
 
-                billSlot.innerText = slot.dataset.number;
+                billSlot.innerText      = slot.dataset.number;
                 amountDisplay.innerText = "₹" + price;
 
                 billPopup.style.display = "flex";
@@ -100,7 +100,7 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     function updateBookingUI() {
-        const list = document.getElementById("bookingList");
+        const list  = document.getElementById("bookingList");
         const count = document.getElementById("bookingCount");
         list.innerHTML = "";
 
@@ -134,17 +134,21 @@ document.addEventListener("DOMContentLoaded", function () {
     }
 
     window.payNow = async function () {
-        if (!selectedSlot) { alert("Slot select karein!"); return; }
+        if (!selectedSlot) return alert("Slot select karein!");
 
-        const name = userNameInput.value.trim();
+        const name    = userNameInput.value.trim();
         const vehicle = vehicleInput.value.trim();
 
-        if (!name) { alert("Naam daalen!"); return; }
-        if (!vehicle) { alert("Vehicle number daalen!"); return; }
+        if (!name) return alert("Naam daalen!");
+        if (!vehicle) return alert("Vehicle number daalen!");
 
-        const amount = Number(selectedSlot.dataset.price);
-        const type = selectedSlot.dataset.type;
-        const slot = selectedSlot.dataset.number;
+        const amount = parseInt(selectedSlot.dataset.price);
+        const type   = selectedSlot.dataset.type;
+        const slot   = selectedSlot.dataset.number;
+
+        const payBtn = document.querySelector(".pay-btn");
+        payBtn.innerText = "⏳ Processing...";
+        payBtn.disabled  = true;
 
         try {
             const res = await fetch(`${BASE_URL}/create-order`, {
@@ -155,6 +159,13 @@ document.addEventListener("DOMContentLoaded", function () {
 
             const data = await res.json();
 
+            if (!res.ok) {
+                alert("❌ " + (data.error || "Order failed!"));
+                payBtn.innerText = "💳 Proceed to Pay";
+                payBtn.disabled  = false;
+                return;
+            }
+
             const options = {
                 key: data.key_id,
                 amount: data.amount,
@@ -164,59 +175,13 @@ document.addEventListener("DOMContentLoaded", function () {
                 order_id: data.order_id,
 
                 handler: async function (response) {
-
-                    console.log("SUCCESS:", response);
-
-                    const verifyRes = await fetch(`${BASE_URL}/verify-payment`, {
-                        method: "POST",
-                        headers: {
-                            "Content-Type": "application/json"
-                        },
-                        body: JSON.stringify({
-                            razorpay_order_id: response.razorpay_order_id,
-                            razorpay_payment_id: response.razorpay_payment_id,
-                            razorpay_signature: response.razorpay_signature,
-                            ticket_id: data.ticket_id,
-                            slot: slot
-                        })
-                    });
-
-                    const verifyData = await verifyRes.json();
-
-                    if (verifyData.success) {
-
-                        selectedSlot.dataset.booked = "true";
-                        selectedSlot.classList.add("booked");
-                        selectedSlot.style.border = "2px solid #ff4455";
-
-                        bookings.push({
-                            ticketId: data.ticket_id,
-                            slot: slot,
-                            vehicle: vehicle,
-                            name: name,
-                            amount: amount
-                        });
-
-                        updateBookingUI();
-                        updateAvailable();
-
-                        gate.classList.add("open");
-                        setTimeout(() => gate.classList.remove("open"), 2500);
-
-                        showTicketPopup(data.ticket_id);
-                        resetForm();
-
-                        alert("✅ Payment Success & Slot Booked");
-
-                    } else {
-                        alert("❌ Verification Failed");
-                    }
-                },
-
-                modal: {
-                    ondismiss: function () {
-                        alert("❌ Payment Cancelled");
-                    }
+                    await verifyPayment(
+                        response.razorpay_order_id,
+                        response.razorpay_payment_id,
+                        response.razorpay_signature,
+                        data.ticket_id,
+                        slot
+                    );
                 },
 
                 prefill: { name: name },
@@ -224,20 +189,65 @@ document.addEventListener("DOMContentLoaded", function () {
             };
 
             const rzp = new window.Razorpay(options);
-
-            rzp.on('payment.failed', function (response) {
-                console.log("FAILED:", response);
-                alert("❌ Payment Failed: " + response.error.description);
-            });
-
             rzp.open();
+
             billPopup.style.display = "none";
 
         } catch (err) {
             console.error(err);
             alert("❌ Server error!");
+            payBtn.innerText = "💳 Proceed to Pay";
+            payBtn.disabled  = false;
         }
     };
+
+    async function verifyPayment(orderId, paymentId, signature, ticketId, slot) {
+        try {
+            const res = await fetch(`${BASE_URL}/verify-payment`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    razorpay_order_id: orderId,
+                    razorpay_payment_id: paymentId,
+                    razorpay_signature: signature
+                })
+            });
+
+            const data = await res.json();
+
+            if (data.success) {
+                if (selectedSlot) {
+                    selectedSlot.dataset.booked = "true";
+                    selectedSlot.classList.add("booked");
+                    selectedSlot.style.border = "2px solid #ff4455";
+                }
+
+                bookings.push({
+                    ticketId: ticketId,
+                    slot: slot,
+                    vehicle: vehicleInput.value.trim(),
+                    name: userNameInput.value.trim(),
+                    amount: selectedSlot ? selectedSlot.dataset.price : ""
+                });
+
+                updateBookingUI();
+                updateAvailable();
+
+                gate.classList.add("open");
+                setTimeout(() => gate.classList.remove("open"), 2500);
+
+                showTicketPopup(ticketId);
+                resetForm();
+
+            } else {
+                alert("❌ Payment verify failed");
+            }
+
+        } catch (err) {
+            console.error(err);
+            alert("❌ Verification error!");
+        }
+    }
 
     function showTicketPopup(ticketId) {
         document.getElementById("ticketIdDisplay").innerText = "Ticket: " + ticketId;
@@ -254,6 +264,12 @@ document.addEventListener("DOMContentLoaded", function () {
         userNameInput.value = "";
         vehicleInput.value = "";
         document.querySelectorAll(".slot").forEach(s => s.classList.remove("selected"));
+
+        const payBtn = document.querySelector(".pay-btn");
+        if (payBtn) {
+            payBtn.innerText = "💳 Proceed to Pay";
+            payBtn.disabled = false;
+        }
     }
 
     window.closePopup = function () {
