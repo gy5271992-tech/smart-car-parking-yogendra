@@ -81,6 +81,18 @@ app.get("/slots", (req, res) => {
     });
 });
 
+app.post("/update-slot", (req, res) => {
+    const { slot, status } = req.body;
+
+    db.query(
+        "UPDATE slots SET is_booked=? WHERE slot_number=?",
+        [status === "occupied", slot],
+        (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            res.json({ success: true });
+        }
+    );
+});
 // =====================
 // CREATE ORDER
 // =====================
